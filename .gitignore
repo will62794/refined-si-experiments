@@ -24,3 +24,11 @@ elle-results*
 event_log*
 *.lsp
 *.clj-kondo
+*.csv
+*.png
+dbdata/
+*.class
+build
+logout
+.vscode/
+db_data_rocksdb/
