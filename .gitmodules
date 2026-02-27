@@ -1,0 +1,8 @@
+[submodule "rocksdb"]
+	path = rocksdb
+	url = git@github.com:will62794/rocksdb.git
+	branch = refined-si
+[submodule "elle"]
+	path = elle
+	url = git@github.com:will62794/elle.git
+	branch = explicit-versions
