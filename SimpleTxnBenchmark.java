@@ -915,9 +915,12 @@ public class SimpleTxnBenchmark {
                         // INSERT_YOUR_CODE
                         // Generate a random byte array with 8 kilobytes (8192 bytes) of data
                         byte[] random8kBytes = new byte[1 * 512];
-                        new Random().nextBytes(random8kBytes);
-                        txn.put(keyBytes, random8kBytes);
-                        // txn.put(keyBytes, valueBytes);
+                        if(jepsenEventModelType == JepsenEventModelType.RWRegister){
+                            txn.put(keyBytes, valueBytes);
+                        } else {
+                            new Random().nextBytes(random8kBytes);
+                            txn.put(keyBytes, random8kBytes);
+                        }
                     }
 
                     totalWrites.incrementAndGet();
