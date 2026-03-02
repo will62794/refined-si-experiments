@@ -59,7 +59,7 @@ def first_for_client(data, key, client):
             return row[key]
     return None
 
-def plot_throughput_vs_clients(data_all, output_file=None, figsize=(35, 15), mixed_workload=False):
+def plot_throughput_vs_clients(data_all, output_file=None, figsize=(35, 15), mixed_workload=False, exclude_abort_modes=[], exclude_abort_rates=False):
     """Plot throughput metrics vs number of clients."""
 
     # print(data_all)
@@ -82,7 +82,7 @@ def plot_throughput_vs_clients(data_all, output_file=None, figsize=(35, 15), mix
     # unique_zipf_skews = list(filter(lambda x: float(x) == 0.7, unique_zipf_skews))
 
 
-    fig, axs = plt.subplots(2, len(unique_read_ratios), figsize=figsize)
+    fig, axs = plt.subplots(1 if exclude_abort_rates else 2, len(unique_read_ratios), figsize=figsize)
     # fig.suptitle('RocksDB Benchmark Results: Performance vs Number of Clients', fontsize=16, fontweight='bold')
     clients = get_unique_sorted(data_all[0], 'clients')
 
@@ -98,7 +98,7 @@ def plot_throughput_vs_clients(data_all, output_file=None, figsize=(35, 15), mix
     for col, read_ratio in enumerate(unique_read_ratios):
         # If axs is 1-dimensional, don't index into column.
         if len(axs.shape) == 1:
-            ax1 = axs[0]
+            ax1 = axs[col]
             # ax2 = axs[1]
             ax3 = axs[1]
         else:
@@ -125,9 +125,14 @@ def plot_throughput_vs_clients(data_all, output_file=None, figsize=(35, 15), mix
                 ]
 
                 # Plot 1: Transactions per second
-                ax1.plot(my_clients, tps, color=color, marker=point_styles[abort_mode], linewidth=3, markersize=16, linestyle=linestyles[abort_mode], label=label)
+                if abort_mode not in exclude_abort_modes:
+                    ax1.plot(my_clients, tps, color=color, marker=point_styles[abort_mode], linewidth=3, markersize=16, linestyle=linestyles[abort_mode], label=label)
                 # ax1.set_xlabel('Number of Clients')
                 # ax1.set_xlabel('Transaction Goodput (txns/sec)')
+                # INSERT_YOUR_CODE
+                # Set yticks every 500 on ax1 (Transactions per second plot)
+                ymin, ymax = ax1.get_ylim()
+                ax1.set_yticks([y for y in range(int(ymin // 500) * 500, int(ymax) + 500, 500)])
                 if col == 0:
                     ax1.set_ylabel('Goodput (committed txns/sec)', fontsize=22)
                 else:
@@ -136,6 +141,8 @@ def plot_throughput_vs_clients(data_all, output_file=None, figsize=(35, 15), mix
                 if not mixed_workload:
                     ax1.set_title(f'Read ratio={read_ratio}', fontsize=24, fontweight='bold')
                 ax1.grid(True, alpha=0.3)
+                # ax1.set_ylim(-5, None)
+
                 # INSERT_YOUR_CODE
                 # Add abort mode annotations to ax1 (Transactions per second plot)
                 if len(my_clients) > 0 and len(tps) > 0:
@@ -196,9 +203,11 @@ def plot_throughput_vs_clients(data_all, output_file=None, figsize=(35, 15), mix
                 #     ax1.annotate(f'{value:.0f}', (c, value), textcoords="offset points", 
                 #                 xytext=(0,10), ha='center')
 
+                if exclude_abort_rates:
+                    continue
+
                 # Plot 3: Success rate
                 sr = [100-float(first_for_client(data_filtered, 'success_rate', c)) for c in my_clients]
-                ax3.plot(my_clients, sr, color=color, marker=point_styles[abort_mode], linewidth=3, markersize=16, linestyle=linestyles[abort_mode], label='Abort Rate')
                 ax3.set_xlabel('Clients', fontsize=22)
                 if col == 0:
                     ax3.set_ylabel('Abort Rate (%)', fontsize=22)
@@ -208,10 +217,12 @@ def plot_throughput_vs_clients(data_all, output_file=None, figsize=(35, 15), mix
                 ax3.set_ylim(-5, 100)
                 ax3.grid(True, alpha=0.3)
                 # ax3.legend()
-                for i, c in enumerate(my_clients):
-                    value = sr[i] 
-                    ax3.annotate(f'{value:.1f}%', (c, value), textcoords="offset points", 
-                                xytext=(0,10), ha='center', fontsize=8)
+                if abort_mode not in exclude_abort_modes:
+                    ax3.plot(my_clients, sr, color=color, marker=point_styles[abort_mode], linewidth=3, markersize=16, linestyle=linestyles[abort_mode], label='Abort Rate')
+                    for i, c in enumerate(my_clients):
+                        value = sr[i] 
+                        ax3.annotate(f'{value:.1f}%', (c, value), textcoords="offset points", 
+                                    xytext=(0,10), ha='center', fontsize=8)
 
         # if col == 0:
             # ax1.legend(["No conflicts", "Classic SI", "Refined SI", "WSI"], fontsize=15)
@@ -220,6 +231,7 @@ def plot_throughput_vs_clients(data_all, output_file=None, figsize=(35, 15), mix
     # This must be done after plotting, on the main `fig` object, using the "handles" and "labels" from ax1
     handles, labels = ax1.get_legend_handles_labels()
     abort_mode_labels = ["Atomic Snapshot", "SIClassic", "SIRefined", "WSI"]
+    abort_mode_labels = [abort_mode_labels[i] for i in range(len(abort_mode_labels)) if i not in exclude_abort_modes]
     fig.legend(
         handles,
         abort_mode_labels,
@@ -351,8 +363,10 @@ def main():
         if mixed_data[abort_mode] is None:
             return 1
 
-    plot_throughput_vs_clients(data, args.output, figsize=(35, 13))
+    plot_throughput_vs_clients(data, args.output, figsize=(35, 15), exclude_abort_rates=False)
+    plot_throughput_vs_clients(data, args.output.replace(".png", "_noatomicsnapshot.png"), figsize=(35, 17), exclude_abort_modes=[0])
     plot_throughput_vs_clients(mixed_data, args.output.replace(".png", "_mixed.png"), figsize=(12, 13), mixed_workload=True)
+    plot_throughput_vs_clients(mixed_data, args.output.replace(".png", "_mixed_noatomicsnapshot.png"), figsize=(12, 13), mixed_workload=True, exclude_abort_modes=[0])
 
     return 0
 

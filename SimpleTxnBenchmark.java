@@ -872,12 +872,7 @@ public class SimpleTxnBenchmark {
                 if (isRead) {
                     // Perform read operation (get vs. getForUpdate?)
                     byte[] value = null;
-                    if(ABORT_MODE == 1 || ABORT_MODE == 0){
-                        value = txn.get(txnReadOptions, keyBytes);
-                        // value = txn.getForUpdate(txnReadOptions, keyBytes, true);
-                    } else {
-                        value = txn.getForUpdate(txnReadOptions, keyBytes, true);
-                    }
+                    value = txn.getForUpdate(txnReadOptions, keyBytes, true);
                     // System.out.println("Read value: " + new String(value, UTF_8));
                     // Lists stored as comma separated string values.
                     if (jepsenEventModelType == JepsenEventModelType.ListAppend) {
@@ -932,12 +927,12 @@ public class SimpleTxnBenchmark {
                 keyIndex += 1;
             }
 
-            // Simulate a bit of extra transaction work with simulated counting computation.
-            try {
-                Thread.sleep(3);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            // Optionally simulate a bit of extra transaction work with simulated counting computation.
+            // try {
+            //     Thread.sleep(3);
+            // } catch (InterruptedException e) {
+            //     e.printStackTrace();
+            // }
 
 
 
